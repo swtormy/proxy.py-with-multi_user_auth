@@ -1,14 +1,12 @@
 from proxy import Proxy
 import logging
-import os
-import asyncio
 
 logging.basicConfig(level=logging.INFO)
 
-async def run_proxy():
+if __name__ == '__main__':
     proxy_params = [
-        "--hostname", os.getenv("HOST", "0.0.0.0"),
-        "--port", os.getenv("PORT", "8899"),
+        "--hostname", "0.0.0.0",
+        "--port", "8899",
         "--enable-dashboard",
         "--plugins", "multi_user_auth_plugin.MultiUserAuthPlugin"
     ]
@@ -16,14 +14,12 @@ async def run_proxy():
     try:
         with Proxy(proxy_params) as p:
             print(f"Proxy запущен на {p.flags.hostname}:{p.flags.port}")
-            await asyncio.sleep(1)  # Даем время для полной инициализации
             try:
                 while True:
-                    await asyncio.sleep(1)  # Асинхронный цикл ожидания
+                    pass
             except KeyboardInterrupt:
                 print("Proxy остановлен")
     except Exception as e:
         print(f"Error: {e}")
 
-if __name__ == '__main__':
-    asyncio.run(run_proxy())
+
