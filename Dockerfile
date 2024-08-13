@@ -1,6 +1,7 @@
 FROM python:3.12-slim
 
-RUN pip install proxy.py
+COPY req.txt /app/req.txt
+RUN pip install -r /app/req.txt
 
 COPY . /app
 COPY creds.json /app/creds.json
