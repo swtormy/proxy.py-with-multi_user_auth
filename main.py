@@ -18,7 +18,7 @@ async def run_proxy():
             print(f"Proxy запущен на {p.flags.hostname}:{p.flags.port}")
             try:
                 while True:
-                    pass # Асинхронный цикл ожидания
+                    pass
             except KeyboardInterrupt:
                 print("Proxy остановлен")
     except Exception as e:
