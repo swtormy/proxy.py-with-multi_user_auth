@@ -4,29 +4,19 @@ from google.cloud import firestore
 from proxy.http.proxy import HttpProxyBasePlugin
 from proxy.http.parser import HttpParser
 from google.oauth2 import service_account
-import logging
 
 
 class MultiUserAuthPlugin(HttpProxyBasePlugin):
-    _initialized = False
+    USERS = {}
+    credentials = service_account.Credentials.from_service_account_file("creds.json")
+    firestore_client = firestore.Client(credentials=credentials)
 
-    def initialize(self):
-        if not self._initialized:
-            self.USERS = {}
-            self.credentials = service_account.Credentials.from_service_account_file("creds.json")
-            self.firestore_client = firestore.Client(credentials=self.credentials)
-            self.collection_name = 'users'
-            self.logger = logging.getLogger(__name__)
-            log = "[multi_user]: MultiUserAuthPlugin проинициализирован"
-            self.logger.info(log)
-            self._initialized = True
 
     def load_users_from_firestore(self) -> dict:
-        self.initialize()  # Убедитесь, что инициализация произошла
         log = "[multi_user]: Загрузка всех пользователей из Firestore"
-        self.logger.info(log)
+        print(log)
 
-        users_ref = self.firestore_client.collection(self.collection_name)
+        users_ref = self.firestore_client.collection('users')
         docs = users_ref.stream()
 
         users = {}
@@ -37,24 +27,21 @@ class MultiUserAuthPlugin(HttpProxyBasePlugin):
             if username and password:
                 users[username] = password
                 log = f"[multi_user]: Загружен пользователь {username}"
-                self.logger.info(log)
+                print(log)
 
         return users
 
     def cache_user(self, username: str, password: str):
         log = f"[multi_user]: Кэширование пользователя {username}"
-        self.initialize()  # Убедитесь, что инициализация произошла
-        self.logger.info(log)
+        print(log)
         self.USERS[username] = password
 
     def get_cached_password(self, username: str) -> Optional[str]:
-        self.initialize()  # Убедитесь, что инициализация произошла
         log = f"[multi_user]: Получение пароля из кэша для пользователя {username}"
-        self.logger.info(log)
+        print(log)
         return self.USERS.get(username)
 
     def is_authenticated(self, request: HttpParser) -> bool:
-        self.initialize()  # Убедитесь, что инициализация произошла
         auth_header = request.headers.get(b'proxy-authorization')
         if auth_header:
             try:
@@ -63,26 +50,25 @@ class MultiUserAuthPlugin(HttpProxyBasePlugin):
                     decoded_credentials = base64.b64decode(credentials).decode('utf-8')
                     username, password = decoded_credentials.split(':', 1)
                     log = f"[multi_user]: Попытка авторизации пользователя {username}"
-                    self.logger.info(log)
+                    print(log)
 
                     cached_password = self.get_cached_password(username)
                     if cached_password:
                         if cached_password == password:
                             log = f"[multi_user]: Авторизация пользователя {username} успешна через кэш"
-                            self.logger.info(log)
+                            print(log)
                             return True
                     else:
-                        # Загружаем всех пользователей из Firestore
                         all_users = self.load_users_from_firestore()
 
                         if username in all_users and all_users[username] == password:
                             self.cache_user(username, password)
                             log = f"[multi_user]: Авторизация пользователя {username} успешна через Firestore"
-                            self.logger.info(log)
+                            print(log)
                             return True
                 log = f"[multi_user]: Неправильные учетные данные для пользователя {username}"
-                self.logger.info(log)
+                print(log)
             except Exception as e:
                 log = f"[multi_user]: Ошибка в процессе авторизации: {e}"
-                self.logger.error(log)
+                print(log)
         return False
