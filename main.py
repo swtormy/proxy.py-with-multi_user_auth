@@ -10,7 +10,7 @@ async def run_proxy():
         "--hostname", os.getenv("HOST", "0.0.0.0"),
         "--port", os.getenv("PORT", "8899"),
         "--enable-dashboard",
-        "--plugins", "multi_user_auth_plugin.MultiUserAuthPlugin"
+        "--plugins", "/app/multi_user_auth_plugin.MultiUserAuthPlugin"
     ]
 
     try:
