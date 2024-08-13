@@ -35,12 +35,18 @@ class MultiUserAuthPlugin(HttpProxyBasePlugin):
 
     def load_user_from_firestore(self, username: str) -> Optional[str]:
         self.logger.info(f"Загрузка пользователя {username} из Firestore")
-        doc_ref = self.firestore_client.collection(self.collection_name).document(username)
-        doc = doc_ref.get()
-        if doc.exists:
-            password = doc.to_dict().get('password')
-            self.logger.info(f"Найден пароль для пользователя {username}")
-            return password
+
+        users_ref = self.firestore_client.collection(self.collection_name)
+        query = users_ref.where('username', '==', username)
+        docs = query.stream()
+
+        for doc in docs:
+            user_data = doc.to_dict()
+            if user_data.get('username') == username:
+                password = user_data.get('password')
+                self.logger.info(f"Найден пароль для пользователя {username}")
+                return password
+
         self.logger.warning(f"Пользователь {username} не найден в Firestore")
         return None
 
