@@ -1,22 +1,34 @@
 import base64
 from typing import Optional
+from google.cloud import firestore
 from proxy.http.proxy import HttpProxyBasePlugin
 from proxy.http.parser import HttpParser
 from proxy.http.exception import ProxyAuthenticationFailed
 
 class MultiUserAuthPlugin(HttpProxyBasePlugin):
 
-    """Придумать где внешне хранить креды. И как их динамично тут обновлять при добавлени\изменении. Либо ребутить проксю"""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.USERS = {}
+        self.firestore_client = firestore.Client()
+        self.collection_name = 'users'
 
-    USERS = {
-        'user1': 'password1',
-        'user2': 'password2',
-    }
+    def load_user_from_firestore(self, username: str) -> Optional[str]:
+        doc_ref = self.firestore_client.collection(self.collection_name).document(username)
+        doc = doc_ref.get()
+        if doc.exists:
+            return doc.to_dict().get('password')
+        return None
+
+    def cache_user(self, username: str, password: str):
+        self.USERS[username] = password
+
+    def get_cached_password(self, username: str) -> Optional[str]:
+        return self.USERS.get(username)
 
     def before_upstream_connection(
         self, request: HttpParser
     ) -> Optional[HttpParser]:
-        print(request.__dict__)
         if not self.is_authenticated(request):
             raise ProxyAuthenticationFailed()
         return request
@@ -39,13 +51,16 @@ class MultiUserAuthPlugin(HttpProxyBasePlugin):
                 if auth_type.lower() == b'basic':
                     decoded_credentials = base64.b64decode(credentials).decode('utf-8')
                     username, password = decoded_credentials.split(':', 1)
-                    if self.USERS.get(username) == password:
-                        return True
+
+                    cached_password = self.get_cached_password(username)
+                    if cached_password:
+                        if cached_password == password:
+                            return True
+                    else:
+                        firestore_password = self.load_user_from_firestore(username)
+                        if firestore_password and firestore_password == password:
+                            self.cache_user(username, password)
+                            return True
             except Exception as e:
                 print(f"Ошибка в процессе авторизации: {e}")
         return False
-
-
-
-
-
