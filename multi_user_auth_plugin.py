@@ -4,13 +4,13 @@ from google.cloud import firestore
 from proxy.http.proxy import HttpProxyBasePlugin
 from proxy.http.parser import HttpParser
 from proxy.http.exception import ProxyAuthenticationFailed
-
 import logging
+
+GLOBAL_USER_CACHE = {}
 
 class MultiUserAuthPlugin(HttpProxyBasePlugin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.USERS = {}
         self.firestore_client = firestore.Client()
         self.collection_name = 'users'
         self.logger = logging.getLogger(__name__)
@@ -36,6 +36,11 @@ class MultiUserAuthPlugin(HttpProxyBasePlugin):
     def load_user_from_firestore(self, username: str) -> Optional[str]:
         self.logger.info(f"Загрузка пользователя {username} из Firestore")
 
+        # Проверка в глобальном кэше
+        if username in GLOBAL_USER_CACHE:
+            self.logger.info(f"Пользователь {username} найден в глобальном кэше")
+            return GLOBAL_USER_CACHE[username]
+
         users_ref = self.firestore_client.collection(self.collection_name)
         query = users_ref.where('username', '==', username)
         docs = query.stream()
@@ -45,6 +50,7 @@ class MultiUserAuthPlugin(HttpProxyBasePlugin):
             if user_data.get('username') == username:
                 password = user_data.get('password')
                 self.logger.info(f"Найден пароль для пользователя {username}")
+                GLOBAL_USER_CACHE[username] = password
                 return password
 
         self.logger.warning(f"Пользователь {username} не найден в Firestore")
@@ -52,11 +58,11 @@ class MultiUserAuthPlugin(HttpProxyBasePlugin):
 
     def cache_user(self, username: str, password: str):
         self.logger.info(f"Кэширование пользователя {username}")
-        self.USERS[username] = password
+        GLOBAL_USER_CACHE[username] = password
 
     def get_cached_password(self, username: str) -> Optional[str]:
         self.logger.info(f"Получение пароля из кэша для пользователя {username}")
-        return self.USERS.get(username)
+        return GLOBAL_USER_CACHE.get(username)
 
     def is_authenticated(self, request: HttpParser) -> bool:
         auth_header = request.headers.get(b'proxy-authorization')

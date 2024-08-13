@@ -16,10 +16,9 @@ async def run_proxy():
     try:
         with Proxy(proxy_params) as p:
             print(f"Proxy запущен на {p.flags.hostname}:{p.flags.port}")
-            await asyncio.sleep(1)  # Даем время для полной инициализации
             try:
                 while True:
-                    await asyncio.sleep(1)  # Асинхронный цикл ожидания
+                    pass
             except KeyboardInterrupt:
                 print("Proxy остановлен")
     except Exception as e:
