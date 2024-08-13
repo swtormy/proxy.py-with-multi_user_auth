@@ -6,18 +6,23 @@ from proxy.http.parser import HttpParser
 from google.oauth2 import service_account
 import logging
 
+
 class MultiUserAuthPlugin(HttpProxyBasePlugin):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.USERS = {}
-        self.credentials = service_account.Credentials.from_service_account_file("creds.json")
-        self.firestore_client = firestore.Client(credentials=self.credentials)
-        self.collection_name = 'users'
-        self.logger = logging.getLogger(__name__)
-        log = "[multi_user]: MultiUserAuthPlugin проинициализирован"
-        self.logger.info(log)
+    _initialized = False
+
+    def initialize(self):
+        if not self._initialized:
+            self.USERS = {}
+            self.credentials = service_account.Credentials.from_service_account_file("creds.json")
+            self.firestore_client = firestore.Client(credentials=self.credentials)
+            self.collection_name = 'users'
+            self.logger = logging.getLogger(__name__)
+            log = "[multi_user]: MultiUserAuthPlugin проинициализирован"
+            self.logger.info(log)
+            self._initialized = True
 
     def load_users_from_firestore(self) -> dict:
+        self.initialize()  # Убедитесь, что инициализация произошла
         log = "[multi_user]: Загрузка всех пользователей из Firestore"
         self.logger.info(log)
 
@@ -38,15 +43,18 @@ class MultiUserAuthPlugin(HttpProxyBasePlugin):
 
     def cache_user(self, username: str, password: str):
         log = f"[multi_user]: Кэширование пользователя {username}"
+        self.initialize()  # Убедитесь, что инициализация произошла
         self.logger.info(log)
         self.USERS[username] = password
 
     def get_cached_password(self, username: str) -> Optional[str]:
+        self.initialize()  # Убедитесь, что инициализация произошла
         log = f"[multi_user]: Получение пароля из кэша для пользователя {username}"
         self.logger.info(log)
         return self.USERS.get(username)
 
     def is_authenticated(self, request: HttpParser) -> bool:
+        self.initialize()  # Убедитесь, что инициализация произошла
         auth_header = request.headers.get(b'proxy-authorization')
         if auth_header:
             try:
