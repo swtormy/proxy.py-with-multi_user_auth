@@ -14,6 +14,8 @@ class MultiUserAuthPlugin(HttpProxyBasePlugin):
         self.firestore_client = firestore.Client(credentials=self.credentials)
         self.collection_name = 'users'
         self.logger = logging.getLogger(__name__)
+        log = "MultiUserAuthPlugin проинициализирован"
+        self.logger.info(log)
 
     def load_users_from_firestore(self) -> dict:
         log = "Загрузка всех пользователей из Firestore"
