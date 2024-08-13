@@ -3,7 +3,7 @@ import logging
 import os
 import asyncio
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 async def run_proxy():
     proxy_params = [
